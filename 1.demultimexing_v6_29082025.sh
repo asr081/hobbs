@@ -11,6 +11,7 @@
 #v1: 01-sept-2022
 ## Input handling
 
+umask 002  # Ensures group-writable files and directories
 
 
 usage() {
@@ -82,7 +83,7 @@ bcl2fastq_outdir=/data2/projects_2025/flowcell_2025/${flowcell}/bcl2fastq_output
 #hence undesired moving from this folder to project folder where we reorganize according to project number. 
 #symlink is generated here after fastq is moved out. 
 bcl2fastq_outdir_time="$bcl2fastq_outdir/$date"
-
+mkdir -p -m 775 "$logdir"
 mkdir -p -m 775 "$bcl2fastq_outdir_time"
 
 echo "Running bcl2fastq..."
@@ -90,6 +91,12 @@ echo "Running bcl2fastq..."
 status=$?
 
 project=$(ls $bcl2fastq_outdir_time | grep UiB)
+
+#guarding if project is empty or UiB grep returns nothing. 
+if [ -z "$project" ]; then
+    echo "[$(date)] No UiB projects found in $bcl2fastq_outdir_time" | tee -a "$logfile"
+    exit 1
+fi
 
 for var in $project
 do
@@ -122,6 +129,11 @@ do
           # Consider moving sample outside loop . 
           sample=$(basename "$r1" | sed 's/_R1.*.fastq.gz//')
 		r2="$final_destination/${sample}_R2.fastq.gz"
+    if [ ! -f "$r2" ]; then
+        echo "[$(date)] Missing R2 file for $sample — skipping trimming." | tee -a "$logfile"
+        continue
+    fi
+
 		#TRUE RUNNING FASTP on raw # 
 
             fastp -i "$r1" -I "$r2" \
@@ -142,13 +154,13 @@ do
 
     	/usr/local/FastQC/fastqc -t 50 -o "$final_destination/trimmed/trimmed_fastqc" "$final_destination"/trimmed/*.fastq.gz
     	
-    	#TRUE: Multiqc on trimmed and raw both 
-    	
-    	sudo docker run --rm \
-        -v "$final_destination/:/Input" \
-        -v "$final_destination/:/Output" \
-        ewels/multiqc multiqc /Input -o /Output -n ${var}_fastqc_raw-n-trimmed_multiqc_report >> "$logfile" 2>&1
-    	echo "[$(date)] MultiQC report generated: $final_destination/${var}_fastqc_raw-n-trimmed_multiqc_report" | tee -a "$logfile"
+    	#TRUE: Multiqc on trimmed and raw both
+
+      docker run --rm \
+      --user $(id -u):$(id -g) \
+        -v "$final_destination:/data" \
+      ewels/multiqc multiqc /data -o /data -n ${var}_fastqc_raw-n-trimmed_multiqc_report >> "$logfile" 2>&1
+      echo "[$(date)] MultiQC report generated: $final_destination/${var}_fastqc_raw-n-trimmed_multiqc_report" | tee -a "$logfile"
        
     	
     	#________________________________________________________________
@@ -160,10 +172,10 @@ do
     echo "[$(date)] Running FastQC + MultiQC on RAW files for $var , No trimming is opted ..." | tee -a "$logfile"
 
     ## Run MultiQC on raw files
-    sudo docker run --rm \
-        -v "$final_destination/:/Input" \
-        -v "$final_destination/:/Output" \
-        ewels/multiqc multiqc /Input -o /Output -n ${var}_fastqc_only_raw_multiqc_report >> "$logfile" 2>&1
+     docker run --rm \
+     --user $(id -u):$(id -g) \
+        -v "$final_destination:/data" \
+        ewels/multiqc multiqc /data -o /data -n ${var}_fastqc_only_raw_multiqc_report >> "$logfile" 2>&1
 
     echo "[$(date)] MultiQC report generated: $final_destination/${var}_fastqc_only_raw_multiqc_report" | tee -a "$logfile"
 fi
