@@ -179,6 +179,7 @@ do
 
     echo "[$(date)] MultiQC report generated: $final_destination/${var}_fastqc_only_raw_multiqc_report" | tee -a "$logfile"
 fi
+done
 #
 
 #RNApipeline
