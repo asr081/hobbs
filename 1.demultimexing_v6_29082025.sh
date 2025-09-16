@@ -159,7 +159,7 @@ do
       docker run --rm \
       --user $(id -u):$(id -g) \
         -v "$final_destination:/data" \
-      ewels/multiqc multiqc /data -o /data -n ${var}_fastqc_raw-n-trimmed_multiqc_report >> "$logfile" 2>&1
+      ewels/multiqc:dev multiqc /data -o /data -n ${var}_fastqc_raw-n-trimmed_multiqc_report >> "$logfile" 2>&1
       echo "[$(date)] MultiQC report generated: $final_destination/${var}_fastqc_raw-n-trimmed_multiqc_report" | tee -a "$logfile"
        
     	
@@ -175,7 +175,7 @@ do
      docker run --rm \
      --user $(id -u):$(id -g) \
         -v "$final_destination:/data" \
-        ewels/multiqc multiqc /data -o /data -n ${var}_fastqc_only_raw_multiqc_report >> "$logfile" 2>&1
+        ewels/multiqc:dev multiqc /data -o /data -n ${var}_fastqc_only_raw_multiqc_report >> "$logfile" 2>&1
 
     echo "[$(date)] MultiQC report generated: $final_destination/${var}_fastqc_only_raw_multiqc_report" | tee -a "$logfile"
 fi
